@@ -9,13 +9,18 @@ char mqttPort[6] = "1883"; // Default MQTT port
 char mqttUser[40] = ""; // Default MQTT user (can be an empty string)
 char mqttPassword[40] = ""; // Default MQTT password (can be an empty string)
 
-const char* apName = "ESP8266-MQTT";
-const char* clientID = "ESP8266-LED";
-const char* ledTopic = "led";
+const char* apName = "ESP8266 Relay";
+const char* clientID = "esp8266-relay";
+const char* controlTopic = "relay"; // Topic to control the relay
 const int ledPin = LED_BUILTIN;
 
 WiFiClient wlan;
 PubSubClient mqtt(wlan);
+
+void relay_control(byte relay, byte state) {
+  byte control[] = {0xA0, relay, state, relay + 0xA0 + state};
+  Serial.write(control, sizeof(control));
+}
 
 // WiFiManager callback function
 void saveConfigCallback() {
@@ -31,7 +36,7 @@ void reconnect() {
     Serial.println("Attempting to connect to the MQTT server...");
     if (mqtt.connect(clientID, mqttUser, mqttPassword)) {
       Serial.println("MQTT reconnected");
-      mqtt.subscribe(ledTopic);
+      mqtt.subscribe(controlTopic); // Subscribe to the control topic
     } else {
       Serial.print("MQTT connect failed, retrying...");
       delay(2000);
@@ -42,28 +47,40 @@ void reconnect() {
 void onMessage(char* topic, byte* payload, unsigned int length) {
   // Handle received messages
   String payloadStr = "";
-  for (int i = 0; i < length; i++) {
+  for (unsigned int i = 0; i < length; i++) {
     payloadStr += (char)payload[i];
   }
 
   Serial.print("Received message: [");
-  Serial.print(topic);
+  Serial.print(topic); // Print the received topic
   Serial.print("] ");
   Serial.println(payloadStr);
 
-  if (strcmp(topic, ledTopic) == 0) {
-    // If an LED control message is received, perform the corresponding action
-    if (payloadStr == "on") {
-      digitalWrite(ledPin, HIGH);
-    } else if (payloadStr == "off") {
-      digitalWrite(ledPin, LOW);
+  if (strcmp(topic, controlTopic) == 0) { // Compare with the control topic
+    // If a control message is received, perform the corresponding action
+    if (payloadStr == "open1") {
+      relay_control(1, 1); // Open the first relay
+    } else if (payloadStr == "close1") {
+      relay_control(1, 0); // Close the first relay
+    } else if (payloadStr == "open2") {
+      relay_control(2, 1); // Open the second relay
+    } else if (payloadStr == "close2") {
+      relay_control(2, 0); // Close the second relay
+    } else if (payloadStr == "open3") {
+      relay_control(3, 1); // Open the third relay
+    } else if (payloadStr == "close3") {
+      relay_control(3, 0); // Close the third relay
+    } else if (payloadStr == "open4") {
+      relay_control(4, 1); // Open the fourth relay
+    } else if (payloadStr == "close4") {
+      relay_control(4, 0); // Close the fourth relay
     }
   }
 }
 
-
 void setup() {
   pinMode(ledPin, OUTPUT);
+  Serial.begin(9600);
 
   WiFiManager wifiManager;
   // Add custom parameters for configuring MQTT server information
